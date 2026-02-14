@@ -1,0 +1,66 @@
+import re
+import os
+import sys
+
+# Compatibility import for pymorphy3 (targeting Python 3.12+)
+try:
+    import pymorphy3 as pymorphy2
+except ImportError:
+    print("Error: Please install dependencies first: pip install pymorphy3 pymorphy2-dicts-ru")
+    sys.exit(1)
+
+
+def lemmatize_to_paragraph(input_path, output_path):
+    """
+    Reads a Russian text file and replaces all words with their lemmas 
+    while preserving the original paragraph structure and punctuation.
+    """
+    morph = pymorphy2.MorphAnalyzer()
+
+    if not os.path.exists(input_path):
+        print(f"Error: Input file not found at {input_path}")
+        return
+
+    print(f"Processing file and generating lemmatized text...")
+
+    with open(input_path, 'r', encoding='utf-8') as f_in, \
+            open(output_path, 'w', encoding='utf-8') as f_out:
+
+        for line in f_in:
+            # 1. Handle empty lines to preserve paragraph structure
+            if not line.strip():
+                f_out.write("\n")
+                continue
+
+            # 2. Tokenize: preserve words, punctuation, and whitespace
+            # \w+ matches words, [^\w\s] matches punctuation, \s+ matches whitespace
+            tokens = re.findall(r'\w+|[^\w\s]|\s+', line, re.UNICODE)
+
+            lemmatized_line = []
+            for token in tokens:
+                # 3. Lemmatize if the token is a word (Russian or English letters)
+                if re.match(r'^[а-яА-ЯёЁa-zA-Z]+$', token):
+                    p = morph.parse(token)[0]
+                    lemma = p.normal_form
+
+                    # Optional: Preserve capitalization if the original word was capitalized
+                    if token.istitle():
+                        lemma = lemma.capitalize()
+
+                    lemmatized_line.append(lemma)
+                else:
+                    # 4. Keep punctuation, numbers, or whitespace as is
+                    lemmatized_line.append(token)
+
+            # 5. Write the processed line
+            f_out.write("".join(lemmatized_line))
+
+    print(f"Success! Lemmatized text saved to: {output_path}")
+
+
+if __name__ == "__main__":
+    # Ensure these paths are correct for your environment
+    input_file = "input_file.txt"
+    output_file = "output_file.txt"
+
+    lemmatize_to_paragraph(input_file, output_file)
