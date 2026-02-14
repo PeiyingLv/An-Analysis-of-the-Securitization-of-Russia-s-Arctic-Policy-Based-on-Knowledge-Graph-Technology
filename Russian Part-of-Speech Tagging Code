@@ -1,0 +1,64 @@
+import re
+import os
+import sys
+
+# Compatibility import
+try:
+    import pymorphy3 as pymorphy2
+except ImportError:
+    print("Please run first: pip install pymorphy3 pymorphy2-dicts-ru")
+    sys.exit(1)
+
+
+def pos_tagging_to_paragraph(input_path, output_path):
+    """
+    Read a Russian text file and append part-of-speech tags to each word,
+    while preserving the original paragraph structure.
+
+    Format: word/POS
+    """
+    morph = pymorphy2.MorphAnalyzer()
+
+    if not os.path.exists(input_path):
+        print(f"Error: input file not found: {input_path}")
+        return
+
+    print("Performing part-of-speech tagging...")
+
+    with open(input_path, 'r', encoding='utf-8') as f_in, \
+            open(output_path, 'w', encoding='utf-8') as f_out:
+
+        for line in f_in:
+            if not line.strip():
+                f_out.write("\n")
+                continue
+
+            # Capture words, punctuation, and whitespace
+            tokens = re.findall(r'\w+|[^\w\s]|\s+', line, re.UNICODE)
+
+            tagged_line = []
+            for token in tokens:
+                # Apply tagging only to alphabetic tokens
+                if re.match(r'^[а-яА-ЯёЁa-zA-Z]+$', token):
+                    p = morph.parse(token)[0]
+                    pos = p.tag.POS
+
+                    # Assign UNK if POS cannot be identified
+                    pos_label = str(pos) if pos else "UNK"
+
+                    # Concatenate as: original_word/POS
+                    tagged_line.append(f"{token}/{pos_label}")
+                else:
+                    # Preserve punctuation and whitespace
+                    tagged_line.append(token)
+
+            f_out.write("".join(tagged_line))
+
+    print(f"Tagging completed. Output saved to: {output_path}")
+
+
+if __name__ == "__main__":
+    input_file = "input_file.txt"
+    output_file = "output_file.txt"
+
+    pos_tagging_to_paragraph(input_file, output_file)
