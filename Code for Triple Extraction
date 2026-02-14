@@ -1,0 +1,60 @@
+import os
+
+def extract_triplets_from_tagged_file(input_path, output_path):
+    """
+    Processes files in 'word/POS' format to extract Subject-Predicate-Object triplets.
+    """
+    if not os.path.exists(input_path):
+        print(f"Error: File not found at {input_path}")
+        return
+
+    triplets = []
+
+    with open(input_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            # 1. Parse tagged pairs: e.g., "Мама/NOUN" -> ("Мама", "NOUN")
+            pairs = []
+            raw_tokens = line.split()
+            for token in raw_tokens:
+                if '/' in token:
+                    parts = token.split('/')
+                    # Take the last part as the POS tag and strip punctuation
+                    pos = parts[-1].strip('.,!?:;')
+                    word = "/".join(parts[:-1])
+                    pairs.append((word, pos))
+
+            # 2. Pattern Matching: Look for [Noun/Pronoun, Verb, Noun/Pronoun]
+            noun_tags = ['NOUN', 'NPRO']
+            verb_tags = ['VERB', 'INFN']
+
+            for i in range(len(pairs) - 2):
+                w1, p1 = pairs[i]
+                w2, p2 = pairs[i + 1]
+                w3, p3 = pairs[i + 2]
+
+                if p1 in noun_tags and p2 in verb_tags and p3 in noun_tags:
+                    triplets.append((w1, w2, w3))
+
+    # 3. Output results
+    with open(output_path, 'w', encoding='utf-8') as f_out:
+        f_out.write(f"{'Subject':<20} | {'Predicate':<20} | {'Object':<20}\n")
+        f_out.write("-" * 65 + "\n")
+        for s, p, o in triplets:
+            f_out.write(f"{s:<20} | {p:<20} | {o:<20}\n")
+
+    if len(triplets) == 0:
+        print("Warning: No triplets extracted. Check if POS tags are uppercase (NOUN, VERB).")
+    else:
+        print(f"Success! Extracted {len(triplets)} triplets to {output_path}")
+
+
+if __name__ == "__main__":
+    # Update these paths to your actual file locations
+    input_file = "corpus_pos_tagged.txt"
+    output_file = "extracted_triplets.txt"
+
+    extract_triplets_from_tagged_file(input_file, output_file)
